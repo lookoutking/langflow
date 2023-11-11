@@ -12,7 +12,14 @@ COPY poetry.lock pyproject.toml ./
 # Copy the rest of the application codes
 COPY ./ ./
 
+EXPOSE 7860
+
+RUN python -m pip install --upgrade pip
 # Install dependencies
-RUN poetry config virtualenvs.create false && poetry install --no-interaction --no-ansi
+RUN poetry config virtualenvs.create false
+
+ENV POETRY_REQUESTS_TIMEOUT=500
+
+RUN poetry install --no-interaction --no-ansi --without dev --extras deploy
 
 CMD ["uvicorn", "--factory", "src.backend.langflow.main:create_app", "--host", "0.0.0.0", "--port", "7860", "--reload", "--log-level", "debug"]

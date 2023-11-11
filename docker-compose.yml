@@ -7,6 +7,8 @@ services:
       dockerfile: ./dev.Dockerfile
     ports:
       - "7860:7860"
+    env_file:
+      - .env
     volumes:
       - ./:/app
     command: bash -c "uvicorn --factory src.backend.langflow.main:create_app --host 0.0.0.0 --port 7860 --reload"
@@ -26,3 +28,52 @@ services:
       - ./src/frontend/src:/home/node/app/src
       - ./src/frontend/package.json:/home/node/app/package.json
     restart: on-failure
+  result_backend:
+    image: redis:6.2.5
+    env_file:
+      - .env
+    ports:
+      - 6379:6379
+    healthcheck:
+      test: "exit 0"
+  celeryworker:
+    env_file:
+      - .env
+    build:
+      context: ./
+      dockerfile: dev.Dockerfile
+    command: celery -A langflow.worker.celery_app worker --loglevel=INFO --concurrency=1 -n lf-worker@%h
+    healthcheck:
+      test: "exit 0"
+    deploy:
+      replicas: 1
+
+  flower:
+    env_file:
+      - .env
+    networks:
+      - default
+    build:
+      context: ./
+      dockerfile: dev.Dockerfile
+    environment:
+      - FLOWER_PORT=5555
+    command: /bin/sh -c "celery -A langflow.worker.celery_app --broker=${BROKER_URL?Variable not set} flower --port=5555"
+  
+  broker:
+    # RabbitMQ management console
+    image: rabbitmq:3-management
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER:-admin}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS:-admin}
+    volumes:
+      - rabbitmq_data:/etc/rabbitmq/
+      - rabbitmq_data:/var/lib/rabbitmq/
+      - rabbitmq_log:/var/log/rabbitmq/
+    ports:
+      - 5672:5672
+      - 15672:15672
+
+volumes:
+  rabbitmq_data:
+  rabbitmq_log:

@@ -83,6 +83,8 @@ WORKDIR $PYSETUP_PATH
 COPY --from=builder-base $POETRY_HOME $POETRY_HOME
 COPY --from=builder-base $PYSETUP_PATH $PYSETUP_PATH
 
+ENV POETRY_REQUESTS_TIMEOUT=500
+
 # Copy just one file to avoid rebuilding the whole image
 COPY ./src/backend/langflow/__init__.py ./src/backend/langflow/__init__.py
 # quicker install as runtime deps are already installed
